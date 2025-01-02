@@ -4,9 +4,9 @@
 
 wandb/
 outputs/
-data/
+datasets/
 _backup/
-! data/meta.csv
+
 *.pt
 __pycache__/
 *.py[cod]
