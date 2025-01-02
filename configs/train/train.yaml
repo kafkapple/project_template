@@ -1,0 +1,13 @@
+epochs: 2
+lr: 0.001
+save_dir: ${dirs.outputs}/checkpoints
+
+metrics:
+  train: ["accuracy", "f1", "precision", "recall"]
+  val: ["accuracy", "f1", "precision", "recall"]
+  
+best_model:
+  metric: "val/f1"
+  mode: "max"
+
+verbose_metrics: false

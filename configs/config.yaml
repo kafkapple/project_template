@@ -1,0 +1,32 @@
+defaults:
+  - model: deit
+  - data: mnist
+  - train: train
+  - _self_
+
+project:
+  name: "wandb_test"
+  timestamp: ${now:%Y%m%d_%H%M%S}
+  hydra_cwd: ${hydra:runtime.cwd}
+  seed: 42
+
+dirs:
+  outputs: outputs/${project.timestamp}
+  dataset: "datasets"
+  subdirs: ["checkpoints", "logs", "metrics"]
+  wandb: ${dirs.outputs}/logs/wandb
+
+logger:
+  wandb:
+    project_name: ${project.name}
+    entity: "ailab_upstage_fastcampus"
+    tags: ["tag1"]
+    dir: ${dirs.wandb}
+    job_type: "train"
+
+hydra:
+  run:
+    dir: ${dirs.outputs}/logs/hydra
+  output_subdir: null
+  job:
+    chdir: false

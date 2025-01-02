@@ -1,0 +1,11 @@
+name: "mnist"
+batch_size: 32
+num_workers: 4
+train_val_split: 0.8  # 학습:검증 데이터 비율
+
+# 데이터셋 특성
+num_features: 784  # 28x28
+num_classes: 10
+
+# 데이터 경로
+data_dir: "data/mnist" 

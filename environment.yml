@@ -1,0 +1,17 @@
+name: wandb_test
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip:
+    - matplotlib
+    - pandas
+    - numpy
+    - scikit-learn
+    - wandb
+    - hydra-core
+    - omegaconf
+    - pytorch-lightning
+    - seaborn
+    - timm

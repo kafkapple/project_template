@@ -1,0 +1,11 @@
+name: "random_dataset"
+batch_size: 32
+num_workers: 4
+train_val_split: 0.8  # 학습:검증 데이터 비율
+
+# 데이터셋 특성
+num_features: 784  # MNIST와 동일하게 설정
+num_classes: 10    # MNIST와 동일하게 설정
+
+# 전체 데이터 크기
+total_size: 1000  # train + val 

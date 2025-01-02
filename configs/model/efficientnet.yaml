@@ -1,0 +1,5 @@
+type: efficientnet
+model_params:
+  variant: 'b0'
+  pretrained: true
+  drop_rate: 0.2 

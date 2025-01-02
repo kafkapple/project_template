@@ -1,23 +1,30 @@
-
 import hydra
 from omegaconf import DictConfig
-from logger.base_logger import Logger
-from metric import metric_test
-@hydra.main(version_base="1.2", config_path='../config', config_name='config.yaml')
+
+from logger import Logger
+from data import get_dataloaders
+from models import ModelFactory
+from train import Trainer
+
+@hydra.main(version_base="1.2", config_path="../configs", config_name="config")
 def main(cfg: DictConfig):
-    
+    # 로거 초기화
     logger = Logger(cfg)
-    logger.print_logger.print_info()
-    wandb_logger = logger.wandb_logger
-    wandb_logger.log_params(cfg.train)
+    
+    # 데이터 로더 생성
+    train_loader, val_loader = get_dataloaders(cfg)
+    
+    # 모델 생성
+    model = ModelFactory.create_model(cfg)
+    
+    # 학습
+    trainer = Trainer(model, train_loader, val_loader, cfg, logger.wandb_logger)
+    trainer.train()
+    
+    # wandb 종료
+    logger.wandb_logger.finish()
 
-    phases =['train', 'val', 'test']
-    for phase in phases:
-        for step in range(cfg.train.epochs):
-            wandb_logger.log_metrics(metric_test(), phase, step = step + 1)
-        wandb_logger.add_summary(metric_test())
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 
 
