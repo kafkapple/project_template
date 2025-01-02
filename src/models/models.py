@@ -37,12 +37,12 @@ class TimmModel(BaseModel):
     def preprocess(self, x):
         """Vision 모델을 위한 전처리"""
         # 입력 형태 확인 및 변환
-        if len(x.shape) == 2:  # (B, 784)
-            x = x.view(-1, 1, 28, 28)  # (B, 1, 28, 28)
-        elif len(x.shape) == 1:  # (784,)
-            x = x.view(1, 1, 28, 28)  # (1, 1, 28, 28)
+        if len(x.shape) == 3:  # (B, H, W)
+            x = x.unsqueeze(1)  # (B, 1, H, W)
+        elif len(x.shape) == 2:  # (B, HW)
+            x = x.view(-1, 1, 28, 28)  # (B, 1, H, W)
         
-        # 이미지가 (B, 1, 28, 28) 형태인지 확인
+        # 이미지가 (B, C, H, W) 형태인지 확인
         if len(x.shape) != 4:
             raise ValueError(f"Expected 4D input tensor, got shape {x.shape}")
         

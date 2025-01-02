@@ -23,9 +23,11 @@ class MNISTDataset(BaseDataset):
     def __getitem__(self, idx):
         x = self.data[idx].float() / 255.0  # 정규화
         
-        # 데이터가 flatten된 경우 (784,) -> (1, 28, 28)
-        if len(x.shape) == 1:
-            x = x.view(1, 28, 28)
+        # 데이터 형태 확인 및 변환
+        if len(x.shape) == 1:  # (784,)
+            x = x.view(1, 28, 28)  # (1, 28, 28)
+        elif len(x.shape) == 2:  # (28, 28)
+            x = x.unsqueeze(0)  # (1, 28, 28)
         
         y = self.targets[idx]
         return x, y

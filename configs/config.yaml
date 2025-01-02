@@ -1,5 +1,5 @@
 defaults:
-  - model: deit
+  - model: xgboost
   - data: mnist
   - train: train
   - _self_
