@@ -1,0 +1,8 @@
+name: "svhn"
+batch_size: 32
+num_workers: 4
+train_val_split: 0.8
+
+num_features: 3072  # 32x32x3
+num_classes: 10
+data_dir: "data/svhn" 

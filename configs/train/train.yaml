@@ -1,10 +1,11 @@
-epochs: 5
+epochs: 2
 lr: 0.001
 save_dir: ${dirs.outputs}/checkpoints
 
 metrics:
-  train: ["accuracy", "f1", "precision", "recall"]
+  train: ["accuracy", "f1"]
   val: ["accuracy", "f1", "precision", "recall"]
+  learning_curve: ["loss", "f1"]
   
 best_model:
   metric: "val/f1"

@@ -81,7 +81,14 @@ class Trainer:
         # 에포크 단위로 메트릭 계산
         epoch_outputs = torch.cat(all_outputs)
         epoch_labels = torch.cat(all_labels)
-        metrics = self.train_metrics.calculate(epoch_outputs, epoch_labels)
+        metrics = self.train_metrics.calculate(
+            epoch_outputs, 
+            epoch_labels,
+            phase='train',
+            step=self.current_epoch,
+            logger=self.wandb_logger,
+            loss=total_loss / len(self.train_loader)
+        )
         metrics['loss'] = total_loss / len(self.train_loader)
         
         # 자세한 분류 리포트 출력 (옵션)
@@ -101,6 +108,7 @@ class Trainer:
         total_loss = 0
         all_outputs = []
         all_labels = []
+        all_images = []  # 이미지 저장을 위한 리스트 추가
 
         with torch.no_grad():
             for data, labels in self.val_loader:
@@ -109,7 +117,6 @@ class Trainer:
                 if isinstance(self.model, nn.Module):
                     outputs = self.model(data)
                 else:
-                    # sklearn/xgboost 모델 예측
                     if isinstance(data, torch.Tensor):
                         data = data.cpu().numpy()
                     outputs = torch.from_numpy(
@@ -120,16 +127,21 @@ class Trainer:
                 total_loss += loss.item()
                 all_outputs.append(outputs)
                 all_labels.append(labels)
+                all_images.append(data)  # 이미지 저장
         
         # 검증 메트릭 계산 (wandb 로깅 포함)
         epoch_outputs = torch.cat(all_outputs)
         epoch_labels = torch.cat(all_labels)
+        epoch_images = torch.cat(all_images)  # 이미지 데이터 결합
+        
         metrics = self.val_metrics.calculate(
             epoch_outputs, 
             epoch_labels,
             phase='val',
-            step=self.current_epoch,  # epoch 정보 추가
-            logger=self.wandb_logger
+            step=self.current_epoch,
+            logger=self.wandb_logger,
+            images=epoch_images,
+            loss=total_loss / len(self.val_loader)
         )
         metrics['loss'] = total_loss / len(self.val_loader)
         
@@ -149,7 +161,7 @@ class Trainer:
             'val/loss_min': float('inf')
         }
 
-        for epoch in range(self.cfg.train.epochs):
+        for epoch in range(1, self.cfg.train.epochs + 1):
             self.current_epoch = epoch  # 현재 epoch 업데이트
             train_metrics = self.train_epoch()
             val_metrics = self.validate()

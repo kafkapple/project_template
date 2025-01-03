@@ -1,5 +1,5 @@
-type: efficientnet
-model_params:
-  variant: 'b0'
-  pretrained: true
-  drop_rate: 0.2 
+type: "efficientnet"
+name: "efficientnet"
+architecture: "efficientnet_b0"
+pretrained: true
+in_channels: 3 
