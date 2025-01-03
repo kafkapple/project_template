@@ -74,13 +74,15 @@ class MetricCalculator:
         # sklearn의 키 이름과 매핑
         metric_mapping = {
             "accuracy": "accuracy",
-            "f1": "f1-score",        # 'f1' -> 'f1-score'로 매핑
+            "f1": "f1-score",
             "precision": "precision",
             "recall": "recall"
         }
         
         for metric_name in self.metric_names:
-            if metric_name == "accuracy":
+            if metric_name == "loss":  # loss는 별도 처리
+                metrics[metric_name] = loss if loss is not None else 0.0
+            elif metric_name == "accuracy":
                 metrics[metric_name] = report["accuracy"]
             else:
                 # macro avg에서 올바른 키 이름으로 매핑하여 가져오기
@@ -171,8 +173,8 @@ class MetricCalculator:
         learning_curve_metrics = self.cfg.train.metrics.learning_curve
         n_plots = len(learning_curve_metrics)
         
-        # 1행 2열 레이아웃으로 변경
-        fig, axes = plt.subplots(1, n_plots, figsize=(15, 5))
+        # 1행 n_plots열 레이아웃으로 변경
+        fig, axes = plt.subplots(1, n_plots, figsize=(6*n_plots, 5))
         if n_plots == 1:
             axes = [axes]
         
@@ -182,13 +184,13 @@ class MetricCalculator:
                 train_data = self.learning_curves[metric_name]['train']
                 if train_data:
                     epochs, values = zip(*train_data)
-                    ax.plot(epochs, values, label=f'Train {metric_name}', marker='o')
+                    ax.plot(epochs, values, 'b-', label=f'Train {metric_name}', marker='o')
                 
                 # Validation 데이터 플롯
                 val_data = self.learning_curves[metric_name]['val']
                 if val_data:
                     epochs, values = zip(*val_data)
-                    ax.plot(epochs, values, label=f'Val {metric_name}', marker='o')
+                    ax.plot(epochs, values, 'r-', label=f'Val {metric_name}', marker='o')
                 
                 ax.set_xlabel('Epoch')
                 ax.set_ylabel(metric_name)
@@ -201,6 +203,17 @@ class MetricCalculator:
             "learning_curves": wandb.Image(plt)
         }, step=step)
         plt.close()
+
+    def _update_learning_curves(self, metrics, phase, step, loss=None):
+        """학습 곡선 데이터를 저장/업데이트하는 함수"""
+        print(f"\nUpdating learning curves for {phase} at step {step}")  # 디버깅용
+        
+        for metric_name, value in metrics.items():
+            if metric_name not in self.learning_curves:
+                self.learning_curves[metric_name] = {'train': [], 'val': []}
+            if phase in ['train', 'val']:
+                self.learning_curves[metric_name][phase].append((step, value))
+                print(f"Added {metric_name}: {value:.4f}")  # 디버깅용
 
 class ModelCheckpointer:
     def __init__(self, cfg, save_dir):
