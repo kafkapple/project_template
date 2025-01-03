@@ -1,4 +1,5 @@
 import logging
+import warnings
 import sys
 import os
 import shutil
@@ -7,6 +8,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from .wandb_logger import WandbLogger
 
+warnings.filterwarnings('ignore')
 class Logger:
     def __init__(self, cfg: DictConfig):
         self.cfg = cfg
