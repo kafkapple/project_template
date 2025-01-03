@@ -1,7 +1,0 @@
-type: xgboost
-_target_: xgboost.XGBClassifier
-model_params:
-  n_estimators: 100
-  max_depth: 6
-  learning_rate: 0.1
-  n_jobs: -1 
