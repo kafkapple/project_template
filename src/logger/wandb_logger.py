@@ -34,7 +34,8 @@ class WandbLogger:
                 name=f"{self.cfg.project.timestamp}",
                 dir=str(wandb_dir),
                 config=config,  # 핵심 설정값들
-                job_type=self.cfg.logger.wandb.job_type
+                job_type=self.cfg.logger.wandb.job_type,
+                reinit=self.cfg.logger.wandb.reinit
             )
             
             print(f'WandB run initialized with name: {self.run.name}')

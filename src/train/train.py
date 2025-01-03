@@ -36,9 +36,9 @@ class Trainer:
         self.save_dir = Path(cfg.train.save_dir)
         self.save_dir.mkdir(exist_ok=True, parents=True)
         
-        # 메트릭 계산기 초기화
-        self.train_metrics = MetricCalculator(cfg.train.metrics.train)
-        self.val_metrics = MetricCalculator(cfg.train.metrics.val)
+        # 메트릭 계산기 초기화 - cfg 전달
+        self.train_metrics = MetricCalculator(cfg, cfg.train.metrics.train)
+        self.val_metrics = MetricCalculator(cfg, cfg.train.metrics.val)
         
         # 모델 체크포인터 초기화
         self.checkpointer = ModelCheckpointer(cfg, self.save_dir)
@@ -48,58 +48,41 @@ class Trainer:
         total_loss = 0
         all_outputs = []
         all_labels = []
-
+        all_images = []  # 이미지도 저장
+        
         pbar = tqdm(self.train_loader, desc='Training')
         for data, labels in pbar:
             data, labels = data.to(self.device), labels.to(self.device)
             
-            if isinstance(self.model, nn.Module):
-                # PyTorch 모델 학습
-                self.optimizer.zero_grad()
-                outputs = self.model(data)
-                loss = self.criterion(outputs, labels)
-                loss.backward()
-                self.optimizer.step()
-            else:
-                # sklearn/xgboost 모델 학습
-                if isinstance(data, torch.Tensor):
-                    data = data.cpu().numpy()
-                if isinstance(labels, torch.Tensor):
-                    labels = labels.cpu().numpy()
-                self.model.fit(data, labels)
-                outputs = torch.from_numpy(
-                    self.model.predict_proba(data)
-                ).float().to(self.device)
-                loss = self.criterion(outputs, torch.tensor(labels, device=self.device))
-
-            total_loss += loss.item()
-            all_outputs.append(outputs)
-            all_labels.append(labels if isinstance(labels, torch.Tensor) else torch.tensor(labels, device=self.device))
+            self.optimizer.zero_grad()
+            outputs = self.model(data)
+            loss = self.criterion(outputs, labels)
+            loss.backward()
+            self.optimizer.step()
             
-            pbar.set_postfix({'loss': total_loss / (pbar.n + 1)})
+            total_loss += loss.item()
+            all_outputs.append(outputs.detach().cpu())
+            all_labels.append(labels.cpu())
+            all_images.append(data.cpu())  # 이미지 저장
+            
+            # 진행률 표시 업데이트
+            pbar.set_postfix({'loss': f'{loss.item():.4f}'})
         
         # 에포크 단위로 메트릭 계산
         epoch_outputs = torch.cat(all_outputs)
         epoch_labels = torch.cat(all_labels)
+        epoch_images = torch.cat(all_images)
+        
         metrics = self.train_metrics.calculate(
             epoch_outputs, 
             epoch_labels,
             phase='train',
             step=self.current_epoch,
             logger=self.wandb_logger,
+            images=epoch_images,  # 이미지 전달
             loss=total_loss / len(self.train_loader)
         )
         metrics['loss'] = total_loss / len(self.train_loader)
-        
-        # 자세한 분류 리포트 출력 (옵션)
-        if self.cfg.train.get('verbose_metrics', False):
-            _, predicted = epoch_outputs.max(1)
-            report = classification_report(
-                self._to_numpy(epoch_labels),
-                self._to_numpy(predicted)
-            )
-            print("\nTraining Classification Report:")
-            print(report)
         
         return metrics
 

@@ -1,32 +1,34 @@
 from typing import Union
 import torch.nn as nn
-from sklearn.ensemble import RandomForestClassifier
-import xgboost as xgb
 import timm
 
 class ModelFactory:
     @staticmethod
-    def create_model(cfg) -> Union[nn.Module, RandomForestClassifier, xgb.XGBClassifier]:
+    def create_model(cfg) -> nn.Module:
         model_type = cfg.model.type
         num_classes = cfg.data.num_classes
 
         if model_type == "mlp":
             layers = []
-            prev_dim = cfg.data.num_features
+            layers.append(nn.Flatten())
+            
+            input_dim = 224 * 224 * 3
+            prev_dim = input_dim
             
             for dim in cfg.model.hidden_dims:
                 layers.append(nn.Linear(prev_dim, dim))
                 layers.append(nn.ReLU())
+                layers.append(nn.Dropout(cfg.model.dropout))
                 prev_dim = dim
             
-            layers.append(nn.Linear(prev_dim, cfg.data.num_classes))
+            layers.append(nn.Linear(prev_dim, num_classes))
             model = nn.Sequential(*layers)
             
         elif model_type == "efficientnet":
             model = timm.create_model(
                 cfg.model.architecture,
                 pretrained=cfg.model.pretrained,
-                num_classes=cfg.data.num_classes,
+                num_classes=num_classes,
                 in_chans=cfg.model.in_channels
             )
             
@@ -34,7 +36,7 @@ class ModelFactory:
             model = timm.create_model(
                 cfg.model.architecture,
                 pretrained=cfg.model.pretrained,
-                num_classes=cfg.data.num_classes,
+                num_classes=num_classes,
                 in_chans=cfg.model.in_channels
             )
             
@@ -42,22 +44,9 @@ class ModelFactory:
             model = timm.create_model(
                 cfg.model.architecture,
                 pretrained=cfg.model.pretrained,
-                num_classes=cfg.data.num_classes,
+                num_classes=num_classes,
                 in_chans=cfg.model.in_channels
             )
-            
-        elif model_type == "random_forest":
-            model = RandomForestClassifier(**cfg.model.model_params)
-            return SklearnModelWrapper(model)
-            
-        elif model_type == "xgboost":
-            xgb_params = {
-                'objective': 'multi:softprob',
-                'num_class': num_classes,
-                **cfg.model.model_params
-            }
-            model = xgb.XGBClassifier(**xgb_params)
-            return SklearnModelWrapper(model)
             
         else:
             raise ValueError(f"Unknown model type: {model_type}")

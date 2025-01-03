@@ -1,5 +1,4 @@
-type: mlp
-_target_: models.models.SimpleClassifier
-model_params:
-  hidden_dims: [64, 32]
-  dropout: 0.1 
+type: "mlp"
+name: "mlp"
+hidden_dims: [512, 256, 128]
+dropout: 0.2 

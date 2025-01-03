@@ -1,6 +1,6 @@
 defaults:
   - model: efficientnet
-  - data: cifar10
+  - data: fashion_mnist
   - train: train
   - _self_
 
@@ -23,6 +23,7 @@ logger:
     job_type: "train"
     tags: ["tag1"]
     dir: ${dirs.wandb}
+    reinit: true # 동일한 스크립트 내에서 여러 개의 실행(run)을 생성하고 싶을 때 reinit=True를 사용
 
 hydra:
   run:

@@ -14,6 +14,29 @@ class Logger:
         self.cfg = cfg
         self.setup_loggers()
       
+    def setup_loggers(self):
+        """로거 초기화"""
+        # 기본 로거 설정
+        logging.basicConfig(
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            level=logging.INFO,
+            handlers=[
+                logging.StreamHandler(sys.stdout),
+                logging.FileHandler(
+                    Path(self.cfg.dirs.outputs) / "logs" / "train.log"
+                )
+            ]
+        )
+        self.logger = logging.getLogger(__name__)
+        
+        # WandB 로거 초기화
+        self.wandb_logger = WandbLogger(self.cfg)
+        self.setup_exp_dirs()
+        self.print_config()  # 설정 출력 
+        self._backup_configs()  # 설정 백업 
+        self.set_seed(self.cfg.project.seed)  # 시드 설정      
+        
+        self.logger.info("Loggers initialized")
     def setup_exp_dirs(self):
         """실험 결과 저장을 위한 디렉토리 생성"""
         # 기본 출력 디렉토리 생성
@@ -43,29 +66,6 @@ class Logger:
         
         print(f"Set random seed to {seed}")
     
-    def setup_loggers(self):
-        """로거 초기화"""
-        # 기본 로거 설정
-        logging.basicConfig(
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            level=logging.INFO,
-            handlers=[
-                logging.StreamHandler(sys.stdout),
-                logging.FileHandler(
-                    Path(self.cfg.dirs.outputs) / "logs" / "train.log"
-                )
-            ]
-        )
-        self.logger = logging.getLogger(__name__)
-        
-        # WandB 로거 초기화
-        self.wandb_logger = WandbLogger(self.cfg)
-        self.setup_exp_dirs()
-        self.print_config()  # 설정 출력 
-        self._backup_configs()  # 설정 백업 
-        self.set_seed(self.cfg.project.seed)  # 시드 설정      
-        
-        self.logger.info("Loggers initialized")
     
     def print_config(self):
         """설정 정보 출력"""

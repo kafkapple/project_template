@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 class MetricCalculator:
-    def __init__(self, metric_names: List[str]):
+    def __init__(self, cfg, metric_names: List[str]):
+        self.cfg = cfg
         self.metric_names = metric_names
         self.learning_curves = {}  # 학습 곡선 데이터 저장용
     
@@ -167,10 +168,11 @@ class MetricCalculator:
 
     def _plot_learning_curves(self, logger, step):
         """학습 곡선 그리기"""
-        learning_curve_metrics = logger.cfg.train.metrics.learning_curve
+        learning_curve_metrics = self.cfg.train.metrics.learning_curve
         n_plots = len(learning_curve_metrics)
         
-        fig, axes = plt.subplots(n_plots, 1, figsize=(10, 5*n_plots))
+        # 1행 2열 레이아웃으로 변경
+        fig, axes = plt.subplots(1, n_plots, figsize=(15, 5))
         if n_plots == 1:
             axes = [axes]
         
