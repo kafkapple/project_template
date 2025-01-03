@@ -143,15 +143,15 @@ class MetricCalculator:
             # 예측 샘플 테이블 생성 (이미지가 제공된 경우)
             if images is not None and phase == 'val':
                 samples = self._get_sample_predictions(
-                    self._to_numpy(images), 
-                    y_true, 
+                    self._to_numpy(images.permute(0, 2, 3, 1)),  # [B, C, H, W] -> [B, H, W, C]로 변경
+                    y_true,
                     y_pred
                 )
                 
                 table_data = []
                 for img, true_label, pred_label, status in samples:
                     table_data.append([
-                        wandb.Image(img),
+                        wandb.Image(img),  # 이미 [H, W, C] 형태로 변환된 이미지
                         true_label,
                         pred_label,
                         status

@@ -1,7 +1,7 @@
 # Deep Learning Project Template with Hydra and WandB Integration
 
 ## 개요
-- 프로젝트는 딥러닝 실험을 위한 모듈화된 템플릿
+- 딥러닝 실험을 위한 모듈화된 템플릿
   - Hydra 설정 관리
   - WandB(Weights & Biases)를 통한 실험 관리 및 시각화 기능
 
@@ -21,7 +21,6 @@
   - Fashion MNIST
   - CIFAR-10
   - SVHN
-  - Dummy Dataset (테스트용)
 - **WandB 통합**:
   - 실험 설정 자동 로깅
   - 메트릭 실시간 모니터링
