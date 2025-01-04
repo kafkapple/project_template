@@ -34,15 +34,6 @@ class DatasetFactory:
             dataset = datasets.CIFAR10(cfg.data.data_dir, train=True,
                                      download=True, transform=transform)
             
-        elif cfg.data.name == "svhn":
-            transform = transforms.Compose([
-                transforms.Resize(224),
-                transforms.ToTensor(),
-                transforms.Normalize((0.4377, 0.4438, 0.4728),
-                                  (0.1980, 0.2010, 0.1970))
-            ])
-            dataset = datasets.SVHN(cfg.data.data_dir, split='train',
-                                  download=True, transform=transform)
             
         # 학습/검증 데이터 분할
         train_size = int(len(dataset) * cfg.data.train_val_split)

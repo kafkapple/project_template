@@ -3,9 +3,9 @@ lr: 0.001
 save_dir: ${dirs.outputs}/checkpoints
 
 metrics:
-  train: ["accuracy", "f1"]
-  val: ["accuracy", "f1", "precision", "recall"]
-  learning_curve: ["loss", "f1"]
+  train: ["accuracy", "f1", "loss"]
+  val: ["accuracy", "f1", "loss"]
+  learning_curve: ["accuracy", "loss"]
   
 best_model:
   metric: "val/f1"
