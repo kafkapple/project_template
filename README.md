@@ -14,13 +14,11 @@
 - **다양한 모델 지원**: 
   - EfficientNet (timm)
   - Vision Transformer (ViT)
-  - DeiT (Data-efficient Image Transformer)
   - MLP
 - **다양한 데이터셋 지원**:
   - MNIST
   - Fashion MNIST
   - CIFAR-10
-  - SVHN
 - **WandB 통합**:
   - 실험 설정 자동 로깅
   - 메트릭 실시간 모니터링
@@ -109,16 +107,14 @@ python src/main.py
 python src/main.py data=mnist
 python src/main.py data=fashion_mnist
 python src/main.py data=cifar10
-python src/main.py data=svhn
 
 # 모델 변경
 python src/main.py model=efficientnet
 python src/main.py model=vit
-python src/main.py model=deit
 python src/main.py model=mlp
 
 # 하이퍼파라미터 조정
-python src/main.py train.lr=0.001 train.epochs=10 data.batch_size=64
+python src/main.py train.optimizer=0.001 train.training.epochs=10 train.training.batch_size=64
 ```
 
 ## 주요 기능 설명
