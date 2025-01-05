@@ -1,9 +1,15 @@
 name: wandb_test
 channels:
+  - pytorch
+  - nvidia
   - defaults
   - conda-forge
 dependencies:
   - python=3.10
+  - pytorch=2.0.0
+  - torchvision=0.15.0
+  - torchaudio=2.0.0
+  - pytorch-cuda=11.8
   - pip:
     - matplotlib
     - pandas
@@ -15,3 +21,4 @@ dependencies:
     - pytorch-lightning
     - seaborn
     - timm
+    - psutil

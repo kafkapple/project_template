@@ -1,6 +1,6 @@
 name: "mnist"
 
-num_workers: 4
+num_workers: 0
 train_val_split: 0.8  # 학습:검증 데이터 비율
 
 # 데이터셋 특성

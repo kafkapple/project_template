@@ -1,6 +1,6 @@
 name: "cifar10"
 
-num_workers: 4
+num_workers: 0
 train_val_split: 0.8
 
 num_features: 3072  # 32x32x3

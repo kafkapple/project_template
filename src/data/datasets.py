@@ -2,6 +2,9 @@ from torchvision import datasets, transforms
 from torch.utils.data import random_split, Subset
 import numpy as np
 
+def repeat_channels(x):
+    return x.repeat(3, 1, 1)
+
 class DatasetFactory:
     @staticmethod
     def create_dataset(cfg):
@@ -10,7 +13,7 @@ class DatasetFactory:
                 transforms.Resize(224),
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,)),
-                transforms.Lambda(lambda x: x.repeat(3, 1, 1))
+                transforms.Lambda(repeat_channels)
             ])
             dataset = datasets.MNIST(cfg.data.data_dir, train=True, 
                                   download=True, transform=transform)
@@ -20,7 +23,7 @@ class DatasetFactory:
                 transforms.Resize(224),
                 transforms.ToTensor(),
                 transforms.Normalize((0.2860,), (0.3530,)),
-                transforms.Lambda(lambda x: x.repeat(3, 1, 1))
+                transforms.Lambda(repeat_channels)
             ])
             dataset = datasets.FashionMNIST(cfg.data.data_dir, train=True,
                                           download=True, transform=transform)
@@ -41,7 +44,7 @@ class DatasetFactory:
             sample_size = int(total_size * cfg.debug.data_ratio)
             indices = np.random.choice(total_size, sample_size, replace=False)
             dataset = Subset(dataset, indices)
-            print(f"\nDebug mode: Using {sample_size} samples ({cfg.debug.data_ratio*100:.1f}% of data)")
+            print(f"Debug mode: sampled {sample_size} examples from {total_size} examples")
         
         # 학습/검증 데이터 분할
         train_size = int(len(dataset) * cfg.data.train_val_split)

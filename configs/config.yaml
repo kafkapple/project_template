@@ -1,6 +1,6 @@
 defaults:
   - model: efficientnet
-  - data: cifar10
+  - data: fashion_mnist
   - train: train
   - _self_
 
@@ -24,7 +24,7 @@ debug:
   batch_size: 16
   data_ratio: 0.1
   epochs: 2
-  num_workers: 2
+  num_workers: 0
 
 
 dirs:
