@@ -50,7 +50,6 @@ class Trainer:
         all_outputs = []
         all_labels = []
         all_images = []
-        all_images = []
         
         pbar = tqdm(self.train_loader, desc='Training')
         for batch_idx, (data, labels) in enumerate(pbar):
@@ -75,7 +74,6 @@ class Trainer:
             total_loss += loss.item()
             all_outputs.append(outputs.detach().cpu())
             all_labels.append(labels.cpu())
-            all_images.append(data.cpu())
             all_images.append(data.cpu())
             
             pbar.set_postfix({'loss': f'{loss.item():.4f}'})
@@ -213,4 +211,3 @@ class Trainer:
         # 학습 완료 후 step 히스토리 로깅
         self.train_metrics.log_step_history(self.wandb_logger)
         
-        # final metrics 로깅 제거

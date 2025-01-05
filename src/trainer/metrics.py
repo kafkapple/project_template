@@ -100,9 +100,6 @@ class MetricCalculator:
             if metric_name == "loss":  # loss는 별도 처리
                 metrics[metric_name] = loss if loss is not None else 0.0
             elif metric_name == "accuracy":
-            if metric_name == "loss":  # loss는 별도 처리
-                metrics[metric_name] = loss if loss is not None else 0.0
-            elif metric_name == "accuracy":
                 metrics[metric_name] = report["accuracy"]
             else:
                 # macro avg에서 올바른 키 이름으로 매핑하여 가져오기
