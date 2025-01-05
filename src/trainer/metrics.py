@@ -91,11 +91,15 @@ class MetricCalculator:
         metric_mapping = {
             "accuracy": "accuracy",
             "f1": "f1-score",
+            "f1": "f1-score",
             "precision": "precision",
             "recall": "recall"
         }
         
         for metric_name in self.metric_names:
+            if metric_name == "loss":  # loss는 별도 처리
+                metrics[metric_name] = loss if loss is not None else 0.0
+            elif metric_name == "accuracy":
             if metric_name == "loss":  # loss는 별도 처리
                 metrics[metric_name] = loss if loss is not None else 0.0
             elif metric_name == "accuracy":
