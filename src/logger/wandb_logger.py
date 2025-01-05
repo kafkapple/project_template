@@ -9,23 +9,45 @@ class WandbLogger:
         self.project_name = cfg.logger.wandb.project_name
         self.entity = cfg.logger.wandb.entity
         self.run = None
-        self.init_wandb()
         
+        # debug 모드 설정 적용
+        self._setup_debug_mode()
+        
+        self.init_wandb()
+    
+    def _setup_debug_mode(self):
+        """Debug 모드 설정 적용"""
+        debug_mode = self.cfg.logger.wandb.job_type == "debug"
+        if debug_mode:
+            print("Debug mode enabled (from job_type)")
+            # debug 설정 적용
+            self.cfg.train.training.epochs = self.cfg.debug.epochs
+            self.cfg.train.training.batch_size = self.cfg.debug.batch_size
+            self.cfg.data.num_workers = self.cfg.debug.num_workers
+            
+            # data ratio 적용
+            if hasattr(self.cfg.data, 'dataset_size'):
+                self.cfg.data.dataset_size = int(self.cfg.data.dataset_size * self.cfg.debug.data_ratio)
+
     def init_wandb(self):
         try:
             wandb_dir = Path(self.cfg.logger.wandb.dir)
             wandb_dir.mkdir(parents=True, exist_ok=True)
 
+            config_dict = OmegaConf.to_container(self.cfg, resolve=True)
+            train_config = config_dict['train']
+            training_config = train_config['training']
+            optimizer_config = train_config['optimizer']
+            regularization_config = train_config['regularization']
+          
             # 가장 중요한 설정값들만 config에 포함
             config = {
                 "model": self.cfg.model.type,
                 "dataset": self.cfg.data.name,
-                "batch_size": self.cfg.data.batch_size,
-                "learning_rate": self.cfg.train.lr,
-                "optimizer": "Adam",
+                "learning_rate": self.cfg.train.optimizer.lr,
                 "target_metric": self.cfg.train.best_model.metric,  # 'val/f1'
                 "mode": self.cfg.train.best_model.mode,            # 'max'
-                "epochs": self.cfg.train.epochs
+                "epochs": self.cfg.train.training.epochs
             }
 
             self.run = wandb.init(
@@ -33,7 +55,12 @@ class WandbLogger:
                 entity=self.entity,
                 name=f"{self.cfg.project.timestamp}",
                 dir=str(wandb_dir),
-                config=config,  # 핵심 설정값들
+                config={
+                    "training": training_config,
+                    "optimizer": optimizer_config,
+                    "regularization": regularization_config,
+                    **config
+                },  # 핵심 설정값들
                 job_type=self.cfg.logger.wandb.job_type,
                 reinit=self.cfg.logger.wandb.reinit
             )

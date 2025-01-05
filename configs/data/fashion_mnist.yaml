@@ -1,5 +1,5 @@
 name: "fashion_mnist"
-batch_size: 32
+
 num_workers: 4
 train_val_split: 0.8
 

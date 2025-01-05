@@ -1,14 +1,69 @@
-epochs: 2
-lr: 0.001
-save_dir: ${dirs.outputs}/checkpoints
+# 1. 학습 관련 파라미터
+training:
+  epochs: 10
+  batch_size: 32
+  scheduler:  # 학습률 스케줄러
+    type: "cosine"  # ["step", "cosine", "linear", "none"]
+    params:
+      # Step scheduler
+      step_size: 10
+      gamma: 0.1
+      # Cosine scheduler
+      T_max: 200
+      eta_min: 0.0001
 
+# 2. 최적화 관련 파라미터
+optimizer:
+  type: "adamw"  # ["adam", "sgd", "adamw"]
+  lr: 0.001  # 기본 학습률
+  params:
+    # Adam/AdamW params
+    betas: [0.9, 0.999]
+    eps: 1e-8
+    weight_decay: 0.01
+    # SGD params
+    momentum: 0.9
+    nesterov: true
+
+# 3. 정규화 및 규제 파라미터
+regularization:
+  dropout: 0.2  # 드롭아웃 비율
+  early_stopping:  # 조기 종료
+    enabled: true
+    patience: 5
+    min_delta: 0.001
+    mode: "max"  # ["max", "min"]
+
+# 기존 metrics 설정
 metrics:
-  train: ["accuracy", "f1"]
-  val: ["accuracy", "f1", "precision", "recall"]
-  learning_curve: ["loss", "f1"]
+# 각 phase에서 계산할 메트릭들
+  train: ["accuracy", "f1", "loss"]  # train phase에서 계산할 메트릭
+  val: ["accuracy", "f1", "loss"] # validation phase에서 계산할 메트릭
+   # learning curve에 표시할 메트릭 (epoch 단위)
+  learning_curve:
+    metrics: ["accuracy", "f1", "loss"] # 이 메트릭들이 각각 subplot으로 생성됨
+    settings:
+      loss:
+        color: "blue"
+        marker: "o"
+      accuracy:
+        color: "green"
+        marker: "s"
+      f1:
+        color: "red"
+        marker: "^"
+      learning_rate:
+        color: "purple"
+        marker: "d"
+        scale: "log"
+   # step 단위로 기록할 메트릭
+  step:
+    enabled: true
+    frequency: 1 # 매 step마다
+    metrics: ["loss", "learning_rate"] # step 단위로 기록할 메트릭
   
 best_model:
   metric: "val/f1"
   mode: "max"
 
-verbose_metrics: false
+verbose_metrics: true

@@ -73,14 +73,6 @@ class ViT(TimmModel):
             **kwargs
         )
 
-class DeiT(TimmModel):
-    """Data-efficient Image Transformer"""
-    def __init__(self, num_classes, variant='tiny_patch16_224', **kwargs):
-        super().__init__(
-            f'deit_{variant}',
-            num_classes=num_classes,
-            **kwargs
-        )
 
 class SimpleClassifier(BaseModel):
     """MLP 모델"""
@@ -101,47 +93,3 @@ class SimpleClassifier(BaseModel):
         
         layers.append(nn.Linear(prev_dim, num_classes))
         self.model = nn.Sequential(*layers)
-
-class SklearnModelWrapper:
-    """scikit-learn/xgboost 모델을 PyTorch와 비슷한 인터페이스로 감싸는 래퍼 클래스"""
-    def __init__(self, model):
-        self.model = model
-        self.device = 'cpu'  # sklearn/xgboost 모델은 CPU만 사용
-        self.is_fitted = False
-    
-    def to(self, device):
-        print(f"Warning: {type(self.model).__name__} only supports CPU")
-        return self
-    
-    def train(self):
-        pass  # sklearn 모델은 train 모드가 없음
-    
-    def eval(self):
-        pass  # sklearn 모델은 eval 모드가 없음
-    
-    def fit(self, X, y):
-        if isinstance(X, torch.Tensor):
-            X = X.cpu().numpy()
-        if isinstance(y, torch.Tensor):
-            y = y.cpu().numpy()
-        
-        if not self.is_fitted:
-            # XGBoost의 경우 classes를 직접 설정할 수 없으므로 
-            # 모델 초기화 시 설정되어 있어야 함
-            self.model.fit(X, y)
-            self.is_fitted = True
-    
-    def predict_proba(self, X):
-        if isinstance(X, torch.Tensor):
-            X = X.cpu().numpy()
-        
-        if not self.is_fitted:
-            raise RuntimeError("Model must be fitted before making predictions")
-        
-        return self.model.predict_proba(X)
-    
-    def __call__(self, x):
-        if isinstance(x, torch.Tensor):
-            x = x.cpu().numpy()
-        proba = self.predict_proba(x)
-        return torch.from_numpy(proba).float().to(x.device) 

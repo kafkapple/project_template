@@ -1,5 +1,6 @@
 from torchvision import datasets, transforms
-from torch.utils.data import random_split
+from torch.utils.data import random_split, Subset
+import numpy as np
 
 class DatasetFactory:
     @staticmethod
@@ -33,17 +34,15 @@ class DatasetFactory:
             ])
             dataset = datasets.CIFAR10(cfg.data.data_dir, train=True,
                                      download=True, transform=transform)
-            
-        elif cfg.data.name == "svhn":
-            transform = transforms.Compose([
-                transforms.Resize(224),
-                transforms.ToTensor(),
-                transforms.Normalize((0.4377, 0.4438, 0.4728),
-                                  (0.1980, 0.2010, 0.1970))
-            ])
-            dataset = datasets.SVHN(cfg.data.data_dir, split='train',
-                                  download=True, transform=transform)
-            
+ 
+        # Debug 모드인 경우 데이터 샘플링
+        if cfg.logger.wandb.job_type == "debug":
+            total_size = len(dataset)
+            sample_size = int(total_size * cfg.debug.data_ratio)
+            indices = np.random.choice(total_size, sample_size, replace=False)
+            dataset = Subset(dataset, indices)
+            print(f"\nDebug mode: Using {sample_size} samples ({cfg.debug.data_ratio*100:.1f}% of data)")
+        
         # 학습/검증 데이터 분할
         train_size = int(len(dataset) * cfg.data.train_val_split)
         val_size = len(dataset) - train_size

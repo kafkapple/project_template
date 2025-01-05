@@ -1,5 +1,5 @@
 type: vit
-model_params:
-  variant: 'base_patch16_224'
-  pretrained: true
-  drop_rate: 0.1 
+architecture: 'vit_base_patch16_224'
+pretrained: true
+in_channels: 3
+drop_rate: 0.1 

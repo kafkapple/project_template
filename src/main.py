@@ -4,11 +4,11 @@ from omegaconf import DictConfig
 from logger import Logger
 from data import get_dataloaders
 from models import ModelFactory
-from train import Trainer
+from trainer import Trainer
 
 @hydra.main(version_base="1.2", config_path="../configs", config_name="config")
 def main(cfg: DictConfig):
-    # 로거 초기화
+    # 로거 초기화 (debug 모드 설정 포함)
     logger = Logger(cfg)
     
     # 데이터 로더 생성

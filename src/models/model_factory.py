@@ -40,14 +40,6 @@ class ModelFactory:
                 in_chans=cfg.model.in_channels
             )
             
-        elif model_type == "deit":
-            model = timm.create_model(
-                cfg.model.architecture,
-                pretrained=cfg.model.pretrained,
-                num_classes=num_classes,
-                in_chans=cfg.model.in_channels
-            )
-            
         else:
             raise ValueError(f"Unknown model type: {model_type}")
         

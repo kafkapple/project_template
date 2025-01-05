@@ -5,14 +5,14 @@ def create_dataloaders(cfg, train_data, val_data):
     """공통 DataLoader 생성 함수"""
     train_loader = DataLoader(
         train_data,
-        batch_size=cfg.data.batch_size,
+        batch_size=cfg.train.training.batch_size,
         shuffle=True,
         num_workers=cfg.data.num_workers
     )
     
     val_loader = DataLoader(
         val_data,
-        batch_size=cfg.data.batch_size,
+        batch_size=cfg.train.training.batch_size,
         shuffle=False,
         num_workers=cfg.data.num_workers
     )
