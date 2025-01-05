@@ -1,6 +1,6 @@
 defaults:
-  - model: efficientnet
-  - data: cifar10
+  - model: vit
+  - data: fashion_mnist
   - train: train
   - _self_
 
@@ -15,7 +15,7 @@ logger:
     project_name: ${project.name}
     entity: "ailab_upstage_fastcampus"
     job_type: "train"
-    tags: ["tag1"]
+    tags: []
     dir: ${dirs.wandb}
     reinit: true
 
