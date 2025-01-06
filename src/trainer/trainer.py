@@ -36,8 +36,12 @@ class Trainer:
         self.save_dir = Path(cfg.dirs.outputs) / 'checkpoints'
         self.save_dir.mkdir(exist_ok=True, parents=True)
         
-        # 메트릭 계산기 초기화 - 동일한 cfg 객체 전달
-        self.metrics_calculator = MetricCalculator(cfg, cfg.train.metrics.train + cfg.train.metrics.val)
+        # 메트릭 계산기 초기화 - train_loader 길이 전달
+        self.metrics_calculator = MetricCalculator(
+            cfg, 
+            cfg.train.metrics.train + cfg.train.metrics.val,
+            train_steps_per_epoch=len(train_loader)  # train_loader 길이 전달
+        )
         
         # 모델 체크포인터 초기화
         self.checkpointer = ModelCheckpointer(cfg, self.save_dir)
@@ -153,13 +157,14 @@ class Trainer:
         
         val_loss = total_loss / len(self.val_loader)
         
-        # validation phase의 step 메트릭 추가
+        # validation phase의 step 메트릭 추가 - global step 사용
         if self.cfg.train.metrics.step.enabled:
+            global_step = self.current_epoch * len(self.train_loader)  # 현재 에포크의 전체 스텝 수
             step_metrics = {'loss': val_loss}
             self.metrics_calculator.add_step_metrics(
                 step_metrics, 
-                self.current_epoch,
-                phase='val'  # validation phase 명시
+                global_step,  # epoch 대신 global step 사용
+                phase='val'
             )
         
         # 원본 메트릭 계산

@@ -16,7 +16,7 @@ class MetricCalculator:
     _shared_learning_curves = None
     _shared_step_history = None  # step 단위 메트릭을 공유하기 위한 클래스 변수
     
-    def __new__(cls, cfg, metric_names: List[str]):
+    def __new__(cls, cfg, metric_names: List[str], train_steps_per_epoch: int):
         key = id(cfg)
         if key not in cls._instances:
             cls._instances[key] = super(MetricCalculator, cls).__new__(cls)
@@ -45,14 +45,16 @@ class MetricCalculator:
                 
                 print(f"[DEBUG] Initialized shared data structures")
                 print(f"[DEBUG] Step history keys: {list(cls._shared_step_history.keys())}")
+                cls._steps_per_epoch = train_steps_per_epoch
         return cls._instances[key]
 
-    def __init__(self, cfg, metric_names: List[str]):
+    def __init__(self, cfg, metric_names: List[str], train_steps_per_epoch: int):
         if hasattr(self, 'initialized'):
             return
             
         self.cfg = cfg
         self.metric_names = metric_names
+        self.steps_per_epoch = train_steps_per_epoch
         self.learning_curves = self._shared_learning_curves
         self.step_history = self._shared_step_history
         
@@ -327,6 +329,16 @@ class MetricCalculator:
             loss_key = f'{phase}_loss'
             loss_value = metrics['loss']
             
+            # validation의 경우 이전 step의 데이터 삭제 (최신 데이터만 유지)
+            if phase == 'val':
+                # 현재 에포크의 시작 step
+                epoch_start_step = (step // self.steps_per_epoch) * self.steps_per_epoch
+                # 이전 에포크의 데이터 유지
+                self.step_history[loss_key] = [
+                    (s, v) for s, v in self.step_history[loss_key] 
+                    if s < epoch_start_step
+                ]
+            
             # 중복 기록 방지
             if not is_step_recorded(loss_key, step):
                 self.step_history[loss_key].append((step, loss_value))
@@ -369,51 +381,102 @@ class MetricCalculator:
 
     def log_step_history(self, logger):
         """스텝 단위 히스토리 로깅 - train/val 구분"""
-        print("\n[DEBUG] Logging step history")
-        print(f"[DEBUG] Available data:")
-        self._check_data_consistency()
-        
         if not (self.step_history['train_loss'] or self.step_history['val_loss']):
             print("[DEBUG] No loss data to plot")
             return
         
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), height_ratios=[2, 1])
         
+        def apply_smoothing(data, window_size):
+            """데이터 스무딩 헬퍼 함수"""
+            # 데이터 정렬
+            sorted_data = sorted(data, key=lambda x: x[0])
+            steps, values = zip(*sorted_data)
+            steps, values = np.array(steps), np.array(values)
+            
+            if len(values) > window_size:
+                # 중심 이동 평균 계산
+                weights = np.ones(window_size) / window_size
+                # 'valid' 모드 대신 'same' 모드 사용하여 원본과 같은 길이 유지
+                smooth_values = np.convolve(values, weights, mode='same')
+                
+                # 경계 처리 개선
+                half_window = window_size // 2
+                # 시작 부분
+                for i in range(half_window):
+                    window = values[:(i + half_window + 1)]
+                    smooth_values[i] = np.mean(window)
+                # 끝 부분
+                for i in range(len(values) - half_window, len(values)):
+                    window = values[(i - half_window):]
+                    smooth_values[i] = np.mean(window)
+                
+                return steps, values, smooth_values
+            return steps, values, values
+        
         # 위쪽 그래프: Loss (train/val 구분)
         if self.step_history['train_loss']:
-            steps, values = zip(*self.step_history['train_loss'])
-            # 이동 평균 계산
-            window = 20  # 이동 평균 윈도우 크기
-            values_smooth = np.convolve(values, np.ones(window)/window, mode='valid')
-            steps_smooth = steps[window-1:]
+            # Train loss 스무딩 (배치 단위라 큰 윈도우 사용)
+            steps, raw_values, smooth_values = apply_smoothing(
+                self.step_history['train_loss'], 
+                window_size=50
+            )
+            print(f"[DEBUG] Train data shapes - steps: {steps.shape}, raw: {raw_values.shape}, smooth: {smooth_values.shape}")
             
-            # 원본 데이터는 투명하게 표시
-            ax1.plot(steps, values, 'b-', alpha=0.2, label='Train Loss (raw)')
-            # 이동 평균선 추가
-            ax1.plot(steps_smooth, values_smooth, 'b-', label='Train Loss (smoothed)', alpha=0.7)
+            # 원본 데이터는 매우 투명하게
+            ax1.plot(steps, raw_values, 'b-', alpha=0.1, label='Train Loss (raw)')
+            # 스무딩된 데이터
+            ax1.plot(steps, smooth_values, 'b-', label='Train Loss (smoothed)', alpha=0.8, linewidth=2)
         
         if self.step_history['val_loss']:
-            steps, values = zip(*self.step_history['val_loss'])
-            ax1.plot(steps, values, 'r--', label='Val Loss', alpha=0.7)
+            # Validation loss 스무딩 (에포크 단위라 작은 윈도우 사용)
+            steps, raw_values, smooth_values = apply_smoothing(
+                self.step_history['val_loss'], 
+                window_size=3  # validation은 더 작은 윈도우 사용
+            )
+            print(f"[DEBUG] Val data shapes - steps: {steps.shape}, raw: {raw_values.shape}, smooth: {smooth_values.shape}")
+            print(f"[DEBUG] Val loss data points: {list(zip(steps, raw_values))}")
+            
+            # 원본 데이터
+            ax1.plot(steps, raw_values, 'r--', alpha=0.2, label='Val Loss (raw)', marker='o', markersize=4)
+            # 스무딩된 데이터
+            ax1.plot(steps, smooth_values, 'r-', label='Val Loss (smoothed)', alpha=0.8, linewidth=2)
+        
+        # y축 범위 설정 (이상치 제외)
+        all_values = []
+        if self.step_history['train_loss']:
+            _, values = zip(*self.step_history['train_loss'])
+            all_values.extend(values)
+        if self.step_history['val_loss']:
+            _, values = zip(*self.step_history['val_loss'])
+            all_values.extend(values)
+            
+        if all_values:
+            values = np.array(all_values)
+            # 상하위 1% 제외한 범위 사용
+            vmin, vmax = np.percentile(values, [1, 99])
+            margin = (vmax - vmin) * 0.1  # 10% 여유 공간
+            ax1.set_ylim(max(0, vmin - margin), vmax + margin)
         
         ax1.set_xlabel('Step')
         ax1.set_ylabel('Loss')
         ax1.legend()
-        ax1.grid(True)
+        ax1.grid(True, alpha=0.3)
         
-        # 아래쪽 그래프: Learning Rate
+        # 아래쪽 그래프: Learning Rate (변경 없음)
         if self.step_history['learning_rate']:
-            steps, values = zip(*self.step_history['learning_rate'])
-            ax2.plot(steps, values, 'g-', label='Learning Rate', alpha=0.7)
+            lr_data = sorted(self.step_history['learning_rate'], key=lambda x: x[0])
+            steps, values = zip(*lr_data)
+            ax2.plot(steps, values, 'g-', label='Learning Rate', alpha=0.8, linewidth=2)
             ax2.set_xlabel('Step')
             ax2.set_ylabel('Learning Rate')
-            ax2.set_yscale('log')  # learning rate는 로그 스케일 유지
+            ax2.set_yscale('log')
             ax2.legend()
-            ax2.grid(True)
+            ax2.grid(True, alpha=0.3)
         
         plt.tight_layout()
         
-        # wandb 로깅 - step/ 아래에 저장
+        # wandb 로깅
         logger.log({
             "step/training_history": wandb.Image(plt)
         })
