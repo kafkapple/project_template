@@ -29,8 +29,8 @@ class DatasetFactory:
             transform = transforms.Compose([
                 transforms.Resize(224),
                 transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), 
-                                  (0.2470, 0.2435, 0.2616))
+                transforms.Normalize((0.4914, 0.4822, 0.4465), # RGB 각 채널별 평균
+                                  (0.2470, 0.2435, 0.2616)) # RGB 각 채널별 표준편차
             ])
             dataset = datasets.CIFAR10(cfg.data.data_dir, train=True,
                                      download=True, transform=transform)
@@ -49,3 +49,4 @@ class DatasetFactory:
         train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
         
         return train_dataset, val_dataset
+

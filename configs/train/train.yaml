@@ -1,6 +1,6 @@
 # 1. 학습 관련 파라미터
 training:
-  epochs: 2
+  epochs: 5
   batch_size: 32
   scheduler:  # 학습률 스케줄러
     type: "cosine"  # ["step", "cosine", "linear", "none"]
@@ -59,7 +59,7 @@ metrics:
    # step 단위로 기록할 메트릭
   step:
     enabled: true
-    frequency: 1 # 매 step마다
+    frequency: 10 # 매 step마다
     metrics: ["loss", "learning_rate"] # step 단위로 기록할 메트릭
   
 best_model:

@@ -36,9 +36,8 @@ class Trainer:
         self.save_dir = Path(cfg.dirs.outputs) / 'checkpoints'
         self.save_dir.mkdir(exist_ok=True, parents=True)
         
-        # 메트릭 계산기 초기화 - cfg 전달
-        self.train_metrics = MetricCalculator(cfg, cfg.train.metrics.train)
-        self.val_metrics = MetricCalculator(cfg, cfg.train.metrics.val)
+        # 메트릭 계산기 초기화 - 동일한 cfg 객체 전달
+        self.metrics_calculator = MetricCalculator(cfg, cfg.train.metrics.train + cfg.train.metrics.val)
         
         # 모델 체크포인터 초기화
         self.checkpointer = ModelCheckpointer(cfg, self.save_dir)
@@ -75,7 +74,7 @@ class Trainer:
             loss.backward()
             self.optimizer.step()
             
-            # step 단위 로깅 - 실제 step 번호 사용
+            # step 단위 로깅 - batch 단위로만 기록
             if self.cfg.train.metrics.step.enabled:
                 if batch_idx % self.cfg.train.metrics.step.frequency == 0:
                     global_step = (self.current_epoch - 1) * len(self.train_loader) + batch_idx
@@ -83,7 +82,7 @@ class Trainer:
                         'loss': loss.item(),
                         'learning_rate': self.optimizer.param_groups[0]['lr']
                     }
-                    self.train_metrics.add_step_metrics(step_metrics, global_step)
+                    self.metrics_calculator.add_step_metrics(step_metrics, global_step)
             
             total_loss += loss.item()
             all_outputs.append(outputs.detach().cpu())
@@ -99,35 +98,34 @@ class Trainer:
         
         avg_loss = total_loss / len(self.train_loader)
         
-        # scheduler step 이후의 learning rate를 사용하기 위해 
-        # learning rate는 metrics에서 제외하고 나중에 추가
-        metrics = {
-            'loss': avg_loss
-        }
-        
-        # train phase 메트릭 계산 및 로깅
-        train_phase_metrics = self.train_metrics.calculate(
+        # 원본 메트릭 계산 - 단일 메트릭 계산기 사용
+        current_lr = self.optimizer.param_groups[0]['lr']
+        base_metrics = self.metrics_calculator.calculate(
             epoch_outputs, 
             epoch_labels,
             phase='train',
             step=self.current_epoch,
             logger=self.wandb_logger,
             images=epoch_images,
-            loss=avg_loss
+            loss=avg_loss,
+            learning_rate=current_lr
         )
         
-        metrics.update({
-            f"train/{k}": v for k, v in train_phase_metrics.items()
-        })
+        # 로깅용 메트릭 생성
+        metrics_for_log = {f"train/{k}": v for k, v in base_metrics.items()}
         
-        return metrics
+        return {
+            'metrics': base_metrics,           # 원본 메트릭
+            'metrics_for_log': metrics_for_log # 로깅용 메트릭
+        }
 
     def validate(self):
+        """검증 수행"""
         self.model.eval()
         total_loss = 0
         all_outputs = []
         all_labels = []
-        all_images = []  # 이미지 저장을 위한 리스트 추가
+        all_images = []
 
         with torch.no_grad():
             for data, labels in self.val_loader:
@@ -146,26 +144,43 @@ class Trainer:
                 total_loss += loss.item()
                 all_outputs.append(outputs)
                 all_labels.append(labels)
-                all_images.append(data)  # 이미지 저장
+                all_images.append(data)
         
-        # 검증 메트릭 계산 (wandb 로깅 포함)
+        # 검증 메트릭 계산
         epoch_outputs = torch.cat(all_outputs)
         epoch_labels = torch.cat(all_labels)
-        epoch_images = torch.cat(all_images)  # 이미지 데이터 결합
+        epoch_images = torch.cat(all_images)
         
-        metrics = self.val_metrics.calculate(
+        val_loss = total_loss / len(self.val_loader)
+        
+        # validation phase의 step 메트릭 추가
+        if self.cfg.train.metrics.step.enabled:
+            step_metrics = {'loss': val_loss}
+            self.metrics_calculator.add_step_metrics(
+                step_metrics, 
+                self.current_epoch,
+                phase='val'  # validation phase 명시
+            )
+        
+        # 원본 메트릭 계산
+        base_metrics = self.metrics_calculator.calculate(
             epoch_outputs, 
             epoch_labels,
             phase='val',
             step=self.current_epoch,
             logger=self.wandb_logger,
             images=epoch_images,
-            loss=total_loss / len(self.val_loader),
-            
+            loss=val_loss,
+            learning_rate=None
         )
-        metrics['loss'] = total_loss / len(self.val_loader)
         
-        return metrics
+        # 로깅용 메트릭 생성
+        metrics_for_log = {f"val/{k}": v for k, v in base_metrics.items()}
+        
+        return {
+            'metrics': base_metrics,           # 원본 메트릭
+            'metrics_for_log': metrics_for_log # 로깅용 메트릭
+        }
 
     def train(self):
         self.current_epoch = 0
@@ -175,8 +190,8 @@ class Trainer:
 
         for epoch in range(1, self.cfg.train.training.epochs + 1):
             self.current_epoch = epoch
-            train_metrics = self._train_epoch_torch()
-            val_metrics = self.validate()
+            train_results = self._train_epoch_torch()
+            val_results = self.validate()
             
             # scheduler step 호출
             if hasattr(self, 'scheduler'):
@@ -184,55 +199,38 @@ class Trainer:
             
             # scheduler step 이후에 현재 learning rate 추가
             current_lr = self.optimizer.param_groups[0]['lr']
-            train_metrics.update({
-                'learning_rate': current_lr,
-                'train/learning_rate': current_lr
-            })
             
-            # 메트릭 로깅
-            self.wandb_logger.log_metrics({
-                **{k: v for k, v in train_metrics.items()},
-                **{f"val/{k}": v for k, v in val_metrics.items()},
-                "epoch": epoch,
-            }, phase=None, step=epoch)
-
-            # best model 저장 및 best metrics 업데이트
-            if self.checkpointer.is_better(val_metrics):
-                checkpoint_path = self.save_dir / 'best_model.pth'
-                
-                # PyTorch 모델인 경우
-                if isinstance(self.model, nn.Module):
-                    checkpoint = {
-                        'epoch': epoch,
-                        'model_state_dict': self.model.state_dict(),
-                        'optimizer_state_dict': self.optimizer.state_dict() if self.optimizer else None,
-                        'metrics': val_metrics,
-                    }
-                    torch.save(checkpoint, checkpoint_path)
-                # sklearn/xgboost 모델인 경우
-                else:
-                    import joblib
-                    joblib.dump(self.model.model, checkpoint_path)
-                
-                # best metrics 업데이트 - train.yaml의 val metrics에 따라
-                best_metrics.update({
-                    'best_epoch': epoch,
-                    **{f"best_{k}": v for k, v in val_metrics.items() 
-                       if k in self.cfg.train.metrics.val}  # val metrics에 있는 것만 저장
-                })
-                
-                # best model 저장 시점에 summary 업데이트
-                self.wandb_logger.run.summary.update(best_metrics)
+            # train 메트릭에 learning rate 추가
+            train_results['metrics']['learning_rate'] = current_lr  # 원본 메트릭에 추가
+            train_results['metrics_for_log']['train/learning_rate'] = current_lr  # 로깅용 메트릭에 추가
+            
+            # 로깅용 메트릭 준비
+            combined_metrics = {
+                **train_results['metrics_for_log'],
+                **val_results['metrics_for_log'],
+                'epoch': epoch
+            }
+            
+            # wandb 로깅
+            self.wandb_logger.log_epoch_metrics(combined_metrics, epoch)
+            
+            # step 단위 메트릭 업데이트
+            if self.cfg.train.metrics.step.enabled:
+                step_metrics = {
+                    'loss': train_results['metrics']['loss'],
+                    'learning_rate': current_lr  # prefix 없는 버전 사용
+                }
+                self.metrics_calculator.add_step_metrics(step_metrics, self.current_epoch)
             
             # 콘솔 출력
             print(
                 f"========== Epoch {epoch}: " + 
                 ", ".join([f"{k}: {v:.4f}" for k, v in {
-                    **{f"train_{k}": v for k, v in train_metrics.items()},
-                    **{f"val_{k}": v for k, v in val_metrics.items()}
+                    **{f"train_{k}": v for k, v in train_results['metrics'].items()},
+                    **{f"val_{k}": v for k, v in val_results['metrics'].items()}
                 }.items()])
             )
         
         # 학습 완료 후 step 히스토리 로깅
-        self.train_metrics.log_step_history(self.wandb_logger)
+        self.metrics_calculator.log_step_history(self.wandb_logger)
         

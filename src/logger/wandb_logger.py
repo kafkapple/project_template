@@ -125,3 +125,23 @@ class WandbLogger:
     def finish(self):
         if self.run is not None:
             self.run.finish()
+
+    def log_step_metrics(self, metrics: dict, step: int):
+        """
+        Log step-based metrics such as training loss or learning rate.
+        """
+        wandb.log({**metrics, "step": step})
+
+    def log_epoch_metrics(self, metrics: dict, epoch: int):
+        """
+        Log epoch-based metrics such as validation loss or accuracy.
+        """
+        wandb.log({**metrics, "epoch": epoch})
+
+    def log_metrics(self, metrics: dict, phase: str = None, step: int = None):
+        """
+        기존 log_metrics 메서드는 하위 호환성을 위해 유지
+        """
+        if phase:
+            metrics = {f"{phase}/{k}": v for k, v in metrics.items()}
+        wandb.log(metrics, step=step)

@@ -29,3 +29,20 @@ def get_dataloaders(cfg):
         return create_dataloaders(cfg, train_dataset, val_dataset)
     else:
         raise ValueError(f"Unknown dataset: {cfg.data.name}") 
+    
+def calculate_stats(dataset):
+    loader = DataLoader(dataset, batch_size=1000, num_workers=4)
+    mean = 0.
+    std = 0.
+    total_images = 0
+    
+    for images, _ in loader:
+        batch_samples = images.size(0)
+        images = images.view(batch_samples, images.size(1), -1)
+        mean += images.mean(2).sum(0)
+        std += images.std(2).sum(0)
+        total_images += batch_samples
+    
+    mean /= total_images
+    std /= total_images
+    return mean, std
