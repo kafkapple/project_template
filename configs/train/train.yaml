@@ -1,21 +1,21 @@
 # 1. 학습 관련 파라미터
 training:
-  epochs: 30
+  epochs: 2
   batch_size: 32
   scheduler:  # 학습률 스케줄러
     type: "cosine"  # ["step", "cosine", "linear", "none"]
     params:
       # Step scheduler
-      step_size: 10
+      step_size: 5
       gamma: 0.1
       # Cosine scheduler
-      T_max: 200
-      eta_min: 0.0001
+      T_max: 100 # 전체 사이클의 길이
+      eta_min: 0.00001  # 최소 학습률
 
 # 2. 최적화 관련 파라미터
 optimizer:
   type: "adamw"  # ["adam", "sgd", "adamw"]
-  lr: 0.001  # 기본 학습률
+  lr: 0.01  # 기본 학습률
   params:
     # Adam/AdamW params
     betas: [0.9, 0.999]
@@ -41,7 +41,7 @@ metrics:
   val: ["accuracy", "f1", "loss"] # validation phase에서 계산할 메트릭
    # learning curve에 표시할 메트릭 (epoch 단위)
   learning_curve:
-    metrics: ["accuracy", "f1", "loss"] # 이 메트릭들이 각각 subplot으로 생성됨
+    metrics: ["accuracy","f1", "loss"] # 이 메트릭들이 각각 subplot으로 생성됨
     settings:
       loss:
         color: "blue"

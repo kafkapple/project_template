@@ -44,10 +44,8 @@ class WandbLogger:
             config = {
                 "model": self.cfg.model.type,
                 "dataset": self.cfg.data.name,
-                "learning_rate": self.cfg.train.optimizer.lr,
                 "target_metric": self.cfg.train.best_model.metric,  # 'val/f1'
                 "mode": self.cfg.train.best_model.mode,            # 'max'
-                "epochs": self.cfg.train.training.epochs
             }
 
             self.run = wandb.init(

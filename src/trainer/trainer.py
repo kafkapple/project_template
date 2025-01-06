@@ -42,6 +42,20 @@ class Trainer:
         
         # 모델 체크포인터 초기화
         self.checkpointer = ModelCheckpointer(cfg, self.save_dir)
+        
+        # Scheduler 초기화
+        if cfg.train.training.scheduler.type == "step":
+            self.scheduler = torch.optim.lr_scheduler.StepLR(
+                self.optimizer,
+                step_size=cfg.train.training.scheduler.params.step_size,
+                gamma=cfg.train.training.scheduler.params.gamma
+            )
+        elif cfg.train.training.scheduler.type == "cosine":
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer,
+                T_max=cfg.train.training.scheduler.params.T_max,
+                eta_min=cfg.train.training.scheduler.params.eta_min
+            )
 
     def _train_epoch_torch(self):
         """PyTorch 모델용 학습"""
@@ -84,25 +98,24 @@ class Trainer:
         epoch_images = torch.cat(all_images)
         
         avg_loss = total_loss / len(self.train_loader)
-        current_lr = self.optimizer.param_groups[0]['lr']
         
+        # scheduler step 이후의 learning rate를 사용하기 위해 
+        # learning rate는 metrics에서 제외하고 나중에 추가
         metrics = {
-            'loss': avg_loss,
-            'learning_rate': current_lr
+            'loss': avg_loss
         }
         
-        # train phase 메트릭 계산 및 로깅 - phase를 명시적으로 지정
+        # train phase 메트릭 계산 및 로깅
         train_phase_metrics = self.train_metrics.calculate(
             epoch_outputs, 
             epoch_labels,
-            phase='train',  # 명시적으로 'train' 지정
+            phase='train',
             step=self.current_epoch,
             logger=self.wandb_logger,
             images=epoch_images,
             loss=avg_loss
         )
         
-        # train phase 메트릭을 metrics에 추가할 때 prefix 추가
         metrics.update({
             f"train/{k}": v for k, v in train_phase_metrics.items()
         })
@@ -147,7 +160,8 @@ class Trainer:
             step=self.current_epoch,
             logger=self.wandb_logger,
             images=epoch_images,
-            loss=total_loss / len(self.val_loader)
+            loss=total_loss / len(self.val_loader),
+            
         )
         metrics['loss'] = total_loss / len(self.val_loader)
         
@@ -164,9 +178,20 @@ class Trainer:
             train_metrics = self._train_epoch_torch()
             val_metrics = self.validate()
             
-            # 메트릭 로깅 - phase prefix 제거
+            # scheduler step 호출
+            if hasattr(self, 'scheduler'):
+                self.scheduler.step()
+            
+            # scheduler step 이후에 현재 learning rate 추가
+            current_lr = self.optimizer.param_groups[0]['lr']
+            train_metrics.update({
+                'learning_rate': current_lr,
+                'train/learning_rate': current_lr
+            })
+            
+            # 메트릭 로깅
             self.wandb_logger.log_metrics({
-                **{k: v for k, v in train_metrics.items()},  # train_ prefix 제거
+                **{k: v for k, v in train_metrics.items()},
                 **{f"val/{k}": v for k, v in val_metrics.items()},
                 "epoch": epoch,
             }, phase=None, step=epoch)

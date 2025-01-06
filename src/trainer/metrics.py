@@ -91,7 +91,6 @@ class MetricCalculator:
         metric_mapping = {
             "accuracy": "accuracy",
             "f1": "f1-score",
-            "f1": "f1-score",
             "precision": "precision",
             "recall": "recall"
         }
@@ -113,33 +112,35 @@ class MetricCalculator:
             print(class_report)
             print('='*80)
         
-        # epoch 단위 메트릭 저장 - phase 처리 수정
+        # epoch 단위 메트릭 저장
         if phase in ['train', 'val']:
             for metric_name in self.cfg.train.metrics.learning_curve.metrics:
                 if metric_name not in self.learning_curves:
                     self.learning_curves[metric_name] = {'train': [], 'val': []}
                 
-                # phase prefix 제거하고 메트릭 값 가져오기
+                # phase prefix가 있는 메트릭 키 확인
                 metric_key = metric_name
                 if metric_name in metrics:
-                    value = metrics[metric_key]
-                elif f"{phase}/{metric_name}" in metrics:  # phase prefix가 있는 경우
+                    value = metrics[metric_name]
+                elif f"{phase}/{metric_name}" in metrics:
                     value = metrics[f"{phase}/{metric_name}"]
                 else:
-                    value = 0.0
-                    
-                self.learning_curves[metric_name][phase].append((step, value))
-            
-            # loss도 learning curves에 추가
-            if 'loss' not in self.learning_curves:
-                self.learning_curves['loss'] = {'train': [], 'val': []}
-            self.learning_curves['loss'][phase].append((step, loss if loss is not None else 0.0))
-            
-            # learning rate는 train phase에서만 추가
-            if phase == 'train' and 'learning_rate' in metrics:
-                if 'learning_rate' not in self.learning_curves:
-                    self.learning_curves['learning_rate'] = {'train': []}
-                self.learning_curves['learning_rate']['train'].append((step, metrics['learning_rate']))
+                    value = None
+                
+                if metric_name == 'loss':
+                    # loss는 직접 전달된 값 사용, None이면 마지막 값 유지
+                    if loss is not None:
+                        self.learning_curves[metric_name][phase].append((step, loss))
+                elif metric_name == 'learning_rate' and phase == 'train':
+                    # learning rate는 train phase에서만 기록
+                    lr_value = metrics.get('learning_rate')
+                    if lr_value is not None:
+                        if 'learning_rate' not in self.learning_curves:
+                            self.learning_curves['learning_rate'] = {'train': []}
+                        self.learning_curves['learning_rate']['train'].append((step, lr_value))
+                elif value is not None:
+                    # 일반 메트릭들 (accuracy, f1 등)
+                    self.learning_curves[metric_name][phase].append((step, value))
         
         # wandb 로깅이 필요한 경우에만 추가 시각화
         if logger is not None:
