@@ -36,12 +36,10 @@ project/
 │   │   ├── mnist.yaml
 │   │   ├── fashion_mnist.yaml
 │   │   ├── cifar10.yaml
-│   │   ├── svhn.yaml
 │   │   └── dummy.yaml
 │   ├── model/                 # 모델 설정
 │   │   ├── efficientnet.yaml
 │   │   ├── vit.yaml
-│   │   ├── deit.yaml
 │   │   └── mlp.yaml
 │   └── train/                 # 학습 설정
 │       └── train.yaml         # 학습 하이퍼파라미터, 메트릭 설정
@@ -54,9 +52,9 @@ project/
 │   │   ├── __init__.py
 │   │   ├── models.py       # 모델 정의
 │   │   └── model_factory.py  # 모델 Factory
-│   ├── train/               # 학습 관련 모듈
+│   ├── trainer/               # 학습 관련 모듈
 │   │   ├── __init__.py
-│   │   ├── train.py        # Trainer 클래스
+│   │   ├── trainer.py        # Trainer 클래스
 │   │   ├── metrics.py      # 메트릭 계산 및 로깅
 │   ├── logger/             # 로깅 관련 모듈
 │   │   ├── __init__.py
@@ -71,11 +69,7 @@ project/
 
 ### 환경 설정
 ```bash
-# 1. 저장소 클론
-git clone <repository-url>
-cd project_template
-
-# 2. Conda 환경 생성
+# Conda 환경 생성
 conda env create -f environment.yml
 conda activate wandb_test
 ```
