@@ -4,15 +4,16 @@ from tqdm import tqdm
 import wandb
 from pathlib import Path
 from .metrics import MetricCalculator, ModelCheckpointer
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, f1_score
 
 class Trainer:
-    def __init__(self, model, train_loader, val_loader, cfg, wandb_logger):
+    def __init__(self, model, train_loader, val_loader, cfg, logger, visualizer):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.cfg = cfg
-        self.wandb_logger = wandb_logger
+        self.logger = logger
+        self.visualizer = visualizer
         
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"\nAvailable device: {'CUDA' if torch.cuda.is_available() else 'CPU'}")
@@ -109,7 +110,7 @@ class Trainer:
             epoch_labels,
             phase='train',
             step=self.current_epoch,
-            logger=self.wandb_logger,
+            logger=self.logger,
             images=epoch_images,
             loss=avg_loss,
             learning_rate=current_lr
@@ -173,7 +174,7 @@ class Trainer:
             epoch_labels,
             phase='val',
             step=self.current_epoch,
-            logger=self.wandb_logger,
+            logger=self.logger,
             images=epoch_images,
             loss=val_loss,
             learning_rate=None
@@ -217,15 +218,19 @@ class Trainer:
             }
             
             # wandb 로깅
-            self.wandb_logger.log_epoch_metrics(combined_metrics, epoch)
+            self.logger.log_epoch_metrics(
+                train_results['metrics'],
+                val_results['metrics'],
+                epoch
+            )
             
-            # step 단위 메트릭 업데이트
+            # 스텝 단위 로깅
             if self.cfg.train.metrics.step.enabled:
-                step_metrics = {
-                    'loss': train_results['metrics']['loss'],
-                    'learning_rate': current_lr  # prefix 없는 버전 사용
-                }
-                self.metrics_calculator.add_step_metrics(step_metrics, self.current_epoch)
+                self.logger.log_step_metrics(
+                    {'loss': train_results['metrics']['loss'], 'lr': current_lr}, 
+                    self.current_epoch, 
+                    phase='train'
+                )
             
             # 콘솔 출력
             print(
@@ -237,5 +242,41 @@ class Trainer:
             )
         
         # 학습 완료 후 step 히스토리 로깅
-        self.metrics_calculator.log_step_history(self.wandb_logger)
+        self.metrics_calculator.log_step_history(self.logger)
+        
+    def _log_validation_metrics(self, outputs, labels, loss, step):
+        """검증 메트릭 로깅"""
+        # 예측값 계산
+        _, predicted = torch.max(outputs.data, 1)
+        
+        # 메트릭 계산
+        accuracy = (predicted == labels).float().mean().item()
+        f1 = f1_score(
+            labels.cpu().numpy(), 
+            predicted.cpu().numpy(), 
+            average='macro'
+        )
+        
+        metrics = {
+            'val/loss': loss,
+            'val/accuracy': accuracy,
+            'val/f1': f1
+        }
+        
+        # 기본 메트릭 로깅
+        self.logger.log_metrics(metrics, step)
+        
+        # 시각화
+        if self.cfg.visualization.enabled:
+            confusion_matrix = self.visualizer.plot_confusion_matrix(
+                labels, outputs, phase='val', step=step
+            )
+            pr_curve = self.visualizer.plot_pr_curve(
+                labels, outputs, self.cfg.model.num_classes, phase='val'
+            )
+            
+            self.logger.log({
+                'val/confusion_matrix': confusion_matrix,
+                'val/pr_curve': pr_curve
+            })
         

@@ -18,7 +18,7 @@ dependencies:
     - wandb
     - hydra-core
     - omegaconf
-    - pytorch-lightning
+    - pytorch-lightning>=2.0.0
     - seaborn
     - timm
     - psutil
