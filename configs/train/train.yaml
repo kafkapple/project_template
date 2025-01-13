@@ -1,6 +1,6 @@
 # 1. 학습 관련 파라미터
 training:
-  epochs: 10
+  epochs: 2
   batch_size: 32
   scheduler:  # 학습률 스케줄러
     type: "cosine"  # ["step", "cosine", "linear", "none"]

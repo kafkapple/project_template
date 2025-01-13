@@ -202,14 +202,17 @@ class MetricCalculator:
             plt.title('Confusion Matrix')
             plt.ylabel('True Label')
             plt.xlabel('Predicted Label')
-            logger.log({f"{phase}/confusion_matrix": wandb.Image(plt)}, step=step)
+            
+            # PyTorch Lightning WandbLogger는 log_metrics 사용
+            logger.log_metrics({
+                f"{phase}/confusion_matrix": wandb.Image(plt)
+            }, step=step)
             self._save_figure(fig, f'confusion_matrix_{phase}.png', step)
             plt.close()
             
-            # PR Curve for each class
-            n_classes = outputs.shape[1]
+            # PR Curve
             fig = plt.figure(figsize=(10, 8))
-            for i in range(n_classes):
+            for i in range(outputs.shape[1]):
                 precision, recall, _ = precision_recall_curve(
                     (y_true == i).astype(int),
                     y_prob[:, i]
@@ -221,7 +224,10 @@ class MetricCalculator:
             plt.ylabel('Precision')
             plt.title('Precision-Recall Curve')
             plt.legend()
-            logger.log({f"{phase}/pr_curve": wandb.Image(plt)}, step=step)
+            
+            logger.log_metrics({
+                f"{phase}/pr_curve": wandb.Image(plt)
+            }, step=step)
             self._save_figure(fig, f'pr_curve_{phase}.png', step)
             plt.close()
             
